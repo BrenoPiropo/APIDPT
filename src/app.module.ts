@@ -9,6 +9,7 @@ import { LaudoModule } from './laudo/laudo.module';
 import { VeiculoService } from './veiculo_carro/veiculo_carro.service';
 import { VeiculoModule } from './veiculo_carro/veiculo_carro.module';
 import { VeiculoController } from './veiculo_carro/veiculo_carro.controller';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { VeiculoController } from './veiculo_carro/veiculo_carro.controller';
     GerenteModule,
     ProcessoModule,
     LaudoModule,
-    VeiculoModule, 
+    VeiculoModule,
+    AuthModule, 
   ],
   providers: [AppService], 
   controllers: [LaudoController], 

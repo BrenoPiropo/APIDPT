@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'; 
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Laudo } from './laudo.entity';
@@ -80,84 +80,96 @@ export class LaudoService {
     };
   }
 
-  // Criar um laudo associando a processo e veículos
-  async create(createLaudoDto: CreateLaudoDto): Promise<Laudo> {
-    const { veiculoIds, processo_id_processo, ...laudoData } = createLaudoDto;
+async create(createLaudoDto: CreateLaudoDto): Promise<Laudo> {
+  if (createLaudoDto.processo_id_processo < 10) {
+    throw new ConflictException('Processos com ID menor que 10 não são aceitos em produção');
+  }
 
-    // Buscar veículos pelos ids fornecidos
-    const veiculos = veiculoIds && veiculoIds.length > 0
-      ? await this.veiculoRepository.findByIds(veiculoIds)
-      : [];
+  // Buscar processo com agente e gerente
+  const processo = await this.processoRepository.findOne({
+    where: { id_processo: createLaudoDto.processo_id_processo },
+    relations: ['agente', 'gerente', 'laudo'],
+  });
 
-    // Buscar processo completo
+  if (!processo) {
+    throw new NotFoundException('Processo não encontrado');
+  }
+
+  if (processo.laudo) {
+    throw new ConflictException('Já existe um laudo associado a esse processo');
+  }
+
+  const laudo = this.laudoRepository.create({
+    numero_inquerito: createLaudoDto.numero_inquerito,
+    objetivo_pericia: createLaudoDto.objetivo_pericia,
+    preambulo: createLaudoDto.preambulo,
+    historico: createLaudoDto.historico,
+    nome_responsavel: processo.agente?.nome_agente ?? 'Responsável não definido',  // Proteção caso agente seja null
+    autoridade_requisitante: createLaudoDto.autoridade_requisitante,
+    orgao_requisitante: createLaudoDto.orgao_requisitante,
+    guia_oficio: createLaudoDto.guia_oficio,
+    ocorrencia_policial: createLaudoDto.ocorrencia_policial,
+    processo: processo,
+  });
+
+  return this.laudoRepository.save(laudo);
+}
+
+  async update(id: number, data: Partial<CreateLaudoDto>): Promise<Laudo> {
+  const laudo = await this.laudoRepository.findOne({
+    where: { id_laudo: id },
+    relations: ['veiculos', 'processo', 'processo.agente'],
+  });
+
+  if (!laudo) {
+    throw new NotFoundException(`Laudo com id ${id} não encontrado`);
+  }
+
+  if (data.veiculoIds) {
+    const veiculos = await this.veiculoRepository.findByIds(data.veiculoIds);
+    laudo.veiculos = veiculos;
+  }
+
+  if (data.processo_id_processo) {
     const processo = await this.processoRepository.findOne({
-      where: { id_processo: processo_id_processo },
+      where: { id_processo: data.processo_id_processo },
       relations: ['agente', 'gerente'],
     });
 
     if (!processo) {
-      throw new NotFoundException(`Processo com id ${processo_id_processo} não encontrado`);
+      throw new NotFoundException(`Processo com id ${data.processo_id_processo} não encontrado`);
     }
 
-    const laudo = this.laudoRepository.create({
-      ...laudoData,
-      processo,
-      veiculos,
-    });
-
-    return await this.laudoRepository.save(laudo);
+    laudo.processo = processo;
+    laudo.nome_responsavel = processo.agente?.nome_agente ?? 'Responsável não definido'; // Atualiza o nome_responsavel no update
   }
 
-  // Atualizar um laudo e suas associações
-  async update(id: number, data: Partial<CreateLaudoDto>): Promise<Laudo> {
-    const laudo = await this.laudoRepository.findOne({
-      where: { id_laudo: id },
-      relations: ['veiculos', 'processo'],
-    });
+  Object.assign(laudo, data);
 
-    if (!laudo) {
-      throw new NotFoundException(`Laudo com id ${id} não encontrado`);
-    }
+  delete (laudo as any).veiculoIds;
+  delete (laudo as any).processo_id_processo;
 
-    // Atualiza os veículos, se fornecidos
-    if (data.veiculoIds) {
-      const veiculos = await this.veiculoRepository.findByIds(data.veiculoIds);
-      laudo.veiculos = veiculos;
-    }
+  await this.laudoRepository.save(laudo);
 
-    // Atualiza o processo, se fornecido
-    if (data.processo_id_processo) {
-      const processo = await this.processoRepository.findOne({
-        where: { id_processo: data.processo_id_processo },
-        relations: ['agente', 'gerente'],
-      });
-
-      if (!processo) {
-        throw new NotFoundException(`Processo com id ${data.processo_id_processo} não encontrado`);
-      }
-
-      laudo.processo = processo;
-    }
-
-    // Atualiza os demais campos do laudo
-    Object.assign(laudo, data);
-
-    // Limpa propriedades extras que não fazem parte da entidade
-    delete (laudo as any).veiculoIds;
-    delete (laudo as any).processo_id_processo;
-
-    await this.laudoRepository.save(laudo);
-
-    // Retorna o laudo já formatado
-    return this.findOne(id);
+  return this.findOne(id);
+}
+async findLaudosPendentesDoAgente(id_agente: number): Promise<Laudo[]> {
+    return this.laudoRepository
+      .createQueryBuilder('laudo')
+      .innerJoinAndSelect('laudo.processo', 'processo')
+      .innerJoinAndSelect('processo.agente', 'agente')
+      .innerJoinAndSelect('processo.gerente', 'gerente')
+      .leftJoinAndSelect('laudo.veiculos', 'veiculos')
+      .where('agente.id_agente = :id_agente', { id_agente })
+      .andWhere('processo.status = :status', { status: 'pendente' })
+      .getMany();
   }
-
-  // Remover um laudo
-  async remove(id: number): Promise<Laudo> {
-    const laudo = await this.laudoRepository.findOne({ where: { id_laudo: id } });
-    if (!laudo) {
-      throw new NotFoundException('Laudo não encontrado');
-    }
-    return await this.laudoRepository.remove(laudo);
+// Remover um laudo
+async remove(id: number): Promise<Laudo> {
+  const laudo = await this.laudoRepository.findOne({ where: { id_laudo: id } });
+  if (!laudo) {
+    throw new NotFoundException('Laudo não encontrado');
   }
+  return await this.laudoRepository.remove(laudo);
+}
 }

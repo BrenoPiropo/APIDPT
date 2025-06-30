@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Req, Request } from '@nestjs/common';
 import { LaudoService } from './laudo.service';
 import { Laudo } from './laudo.entity';
 import { CreateLaudoDto } from './dto/create-laudo.dto';
 import { UpdateLaudoDto } from './dto/update-laudo.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @Controller('laudo')
 export class LaudoController {
@@ -31,5 +32,12 @@ export class LaudoController {
     @Delete(':id')
     remove(@Param('id') id: number): Promise<Laudo> {
     return this.laudoService.remove(id);
-    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('pendentes')
+  async getLaudosPendentes(@Req() req: any) {
+    const agente = req.user as { id_agente: number };
+    return this.laudoService.findLaudosPendentesDoAgente(agente.id_agente);
+  }
 }

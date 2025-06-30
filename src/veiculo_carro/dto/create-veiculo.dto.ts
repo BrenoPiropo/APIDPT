@@ -28,6 +28,10 @@ export class CreateVeiculoDto {
   @IsOptional()
   @IsString()
   num_placa?: string;
+  @IsOptional()
+  @IsString()
+  num_motor?: string;
+
 
   @IsOptional()
   @IsString()
@@ -63,5 +67,5 @@ export class CreateVeiculoDto {
 
   @IsNotEmpty()
   @IsNumber()
-  laudoIds: number[];  // IDs dos laudos para associar
+  laudoIds: number[];  
 }

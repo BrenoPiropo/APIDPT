@@ -4,7 +4,7 @@ import { Laudo } from '../laudo/laudo.entity';
 @Entity('veiculo_carro')
 export class Veiculo {
   @PrimaryGeneratedColumn({ name: 'veiculo_id' })
-   veiculo_id: number;
+  veiculo_id: number;
 
   @Column({ nullable: true, length: 255 })
   marca?: string;
@@ -51,6 +51,12 @@ export class Veiculo {
   @Column({ nullable: true, length: 45 })
   plaquetas_ano_fabricacao?: string;
 
+  @Column({ type: 'text', nullable: true })
+  condicoes_tecnicas?: string;
+
+  @Column({ type: 'text', nullable: true })
+  conclusao?: string;
+
   @ManyToMany(() => Laudo, (laudo) => laudo.veiculos, { cascade: true })
   @JoinTable({
     name: 'veiculo_carro_has_laudo',
@@ -65,4 +71,3 @@ export class Veiculo {
   })
   laudos: Laudo[];
 }
-

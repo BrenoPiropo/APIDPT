@@ -19,10 +19,6 @@ export class CreateLaudoDto {
 
   @IsNotEmpty()
   @IsString()
-  nome_responsavel: string;
-
-  @IsNotEmpty()
-  @IsString()
   autoridade_requisitante: string;
 
   @IsNotEmpty()
