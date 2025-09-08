@@ -3,66 +3,99 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Veiculo } from './veiculo_carro.entity';
 import { CreateVeiculoDto } from './dto/create-veiculo.dto';
-import { Laudo } from '../laudo/laudo.entity';
+import { FotoVeiculo } from '../foto-veiculo/foto_veiculo.entity';
 
 @Injectable()
 export class VeiculoService {
   constructor(
     @InjectRepository(Veiculo)
-    private veiculoRepository: Repository<Veiculo>,
-
-    @InjectRepository(Laudo)
-    private laudoRepository: Repository<Laudo>,
+    private readonly veiculoRepo: Repository<Veiculo>,
+    @InjectRepository(FotoVeiculo)
+    private readonly fotoRepo: Repository<FotoVeiculo>,
   ) {}
 
-  async create(createVeiculoDto: CreateVeiculoDto): Promise<Veiculo> {
-    const { laudoIds, ...veiculoData } = createVeiculoDto;
+  // Cria veículo com fotos
+  async create(
+    createVeiculoDto: CreateVeiculoDto,
+    fotosData?: {
+      foto_veiculo?: string[];
+      foto_vidros?: string[];
+      foto_placa?: string[];
+      foto_chassi?: string[];
+      foto_motor?: string[];
+    },
+  ): Promise<Veiculo> {
+    // 1️⃣ Cria o veículo
+    const veiculo = this.veiculoRepo.create(createVeiculoDto);
+    await this.veiculoRepo.save(veiculo);
 
-    // Buscar os Laudos correspondentes
-    const laudos = await this.laudoRepository.findByIds(laudoIds);
+    // 2️⃣ Cria um único registro de fotos
+    if (fotosData) {
+      const fotos = this.fotoRepo.create({
+        veiculo_id: veiculo.veiculo_id,
+        foto_veiculo: fotosData.foto_veiculo?.filter(f => !!f).join(',') || null,
+        foto_vidros: fotosData.foto_vidros?.filter(f => !!f).join(',') || null,
+        foto_placa: fotosData.foto_placa?.filter(f => !!f).join(',') || null,
+        foto_chassi: fotosData.foto_chassi?.filter(f => !!f).join(',') || null,
+        foto_motor: fotosData.foto_motor?.filter(f => !!f).join(',') || null,
+      });
+      await this.fotoRepo.save(fotos);
+      veiculo.fotos = [fotos];
+    }
 
-    // Criar a entidade veiculo já com os laudos
-    const veiculo = this.veiculoRepository.create({
-      ...veiculoData,
-      laudos,
-    });
-
-    return await this.veiculoRepository.save(veiculo);
+    return veiculo;
   }
 
+  // Retorna todos os veículos com fotos
   async findAll(): Promise<Veiculo[]> {
-    return this.veiculoRepository.find({ relations: ['laudos'] });
+    return this.veiculoRepo.find({ relations: ['fotos'] });
   }
 
+  // Retorna veículo específico com fotos
   async findOne(id: number): Promise<Veiculo> {
-    return this.veiculoRepository.findOne({
-      where: { veiculo_id: id },
-      relations: ['laudos'],
-    });
+    return this.veiculoRepo.findOne({ where: { veiculo_id: id }, relations: ['fotos'] });
   }
 
-  async update(id: number, updateVeiculoDto: Partial<CreateVeiculoDto>): Promise<Veiculo> {
-    const veiculo = await this.veiculoRepository.findOne({
-      where: { veiculo_id: id },
-      relations: ['laudos'],
-    });
-
-    if (!veiculo) {
-      throw new Error('Veículo não encontrado');
-    }
-
-    // Se vier laudoIds, buscar os laudos e atualizar o relacionamento
-    if (updateVeiculoDto.laudoIds) {
-      const laudos = await this.laudoRepository.findByIds(updateVeiculoDto.laudoIds);
-      veiculo.laudos = laudos;
-      delete updateVeiculoDto.laudoIds;
-    }
+  // Atualiza veículo e fotos
+  async update(
+    id: number,
+    updateVeiculoDto: Partial<CreateVeiculoDto>,
+    fotosData?: {
+      foto_veiculo?: string[];
+      foto_vidros?: string[];
+      foto_placa?: string[];
+      foto_chassi?: string[];
+      foto_motor?: string[];
+    },
+  ): Promise<Veiculo> {
+    const veiculo = await this.veiculoRepo.findOne({ where: { veiculo_id: id }, relations: ['fotos'] });
+    if (!veiculo) throw new Error('Veículo não encontrado');
 
     Object.assign(veiculo, updateVeiculoDto);
-    return this.veiculoRepository.save(veiculo);
+    await this.veiculoRepo.save(veiculo);
+
+    if (fotosData) {
+      // Atualiza ou cria registro de fotos
+      let fotos = veiculo.fotos?.[0];
+      if (!fotos) {
+        fotos = this.fotoRepo.create({ veiculo_id: veiculo.veiculo_id });
+      }
+
+      fotos.foto_veiculo = fotosData.foto_veiculo?.filter(f => !!f).join(',') || fotos.foto_veiculo;
+      fotos.foto_vidros = fotosData.foto_vidros?.filter(f => !!f).join(',') || fotos.foto_vidros;
+      fotos.foto_placa = fotosData.foto_placa?.filter(f => !!f).join(',') || fotos.foto_placa;
+      fotos.foto_chassi = fotosData.foto_chassi?.filter(f => !!f).join(',') || fotos.foto_chassi;
+      fotos.foto_motor = fotosData.foto_motor?.filter(f => !!f).join(',') || fotos.foto_motor;
+
+      await this.fotoRepo.save(fotos);
+      veiculo.fotos = [fotos];
+    }
+
+    return veiculo;
   }
 
+  // Remove veículo
   async remove(id: number): Promise<void> {
-    await this.veiculoRepository.delete(id);
+    await this.veiculoRepo.delete(id);
   }
 }

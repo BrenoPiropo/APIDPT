@@ -20,9 +20,11 @@ export class LaudoController {
   }
 
   @Post()
-  create(@Body() data: CreateLaudoDto): Promise<Laudo> {
-    return this.laudoService.create(data);
+    async create(@Body() createLaudoDto: CreateLaudoDto) {
+    const laudoCriado = await this.laudoService.create(createLaudoDto);
+    return laudoCriado;
   }
+
 
   @Put(':id')
   update(@Param('id') id: number, @Body() data: UpdateLaudoDto): Promise<Laudo> {

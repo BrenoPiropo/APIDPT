@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Put, Param, Get, Delete } from '@nestjs/common';
 import { VeiculoService } from './veiculo_carro.service';
 import { CreateVeiculoDto } from './dto/create-veiculo.dto';
 
@@ -7,8 +7,32 @@ export class VeiculoController {
   constructor(private readonly veiculoService: VeiculoService) {}
 
   @Post()
-  async create(@Body() createVeiculoDto: CreateVeiculoDto) {
-    return this.veiculoService.create(createVeiculoDto);
+  async create(
+    @Body() createVeiculoDto: CreateVeiculoDto,
+    @Body('fotos') fotosData?: {
+      foto_veiculo?: string[];
+      foto_vidros?: string[];
+      foto_placa?: string[];
+      foto_chassi?: string[];
+      foto_motor?: string[];
+    },
+  ) {
+    return this.veiculoService.create(createVeiculoDto, fotosData);
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') id: number,
+    @Body() updateVeiculoDto: Partial<CreateVeiculoDto>,
+    @Body('fotos') fotosData?: {
+      foto_veiculo?: string[];
+      foto_vidros?: string[];
+      foto_placa?: string[];
+      foto_chassi?: string[];
+      foto_motor?: string[];
+    },
+  ) {
+    return this.veiculoService.update(id, updateVeiculoDto, fotosData);
   }
 
   @Get()
@@ -17,18 +41,12 @@ export class VeiculoController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.veiculoService.findOne(+id);
-  }
-
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() updateVeiculoDto: Partial<CreateVeiculoDto>) {
-    return this.veiculoService.update(+id, updateVeiculoDto);
+  async findOne(@Param('id') id: number) {
+    return this.veiculoService.findOne(id);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    await this.veiculoService.remove(+id);
-    return { message: 'Veículo removido com sucesso' };
+  async remove(@Param('id') id: number) {
+    return this.veiculoService.remove(id);
   }
 }

@@ -10,6 +10,7 @@ import { VeiculoService } from './veiculo_carro/veiculo_carro.service';
 import { VeiculoModule } from './veiculo_carro/veiculo_carro.module';
 import { VeiculoController } from './veiculo_carro/veiculo_carro.controller';
 import { AuthModule } from './auth/auth.module';
+import { FotoVeiculoModule } from './foto-veiculo/foto_veiculo.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { AuthModule } from './auth/auth.module';
     ProcessoModule,
     LaudoModule,
     VeiculoModule,
-    AuthModule, 
+    AuthModule,
+    FotoVeiculoModule, 
   ],
   providers: [AppService], 
   controllers: [LaudoController], 

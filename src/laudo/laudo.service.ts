@@ -85,7 +85,6 @@ async create(createLaudoDto: CreateLaudoDto): Promise<Laudo> {
     throw new ConflictException('Processos com ID menor que 10 não são aceitos em produção');
   }
 
-  // Buscar processo com agente e gerente
   const processo = await this.processoRepository.findOne({
     where: { id_processo: createLaudoDto.processo_id_processo },
     relations: ['agente', 'gerente', 'laudo'],
@@ -99,21 +98,32 @@ async create(createLaudoDto: CreateLaudoDto): Promise<Laudo> {
     throw new ConflictException('Já existe um laudo associado a esse processo');
   }
 
+  let veiculos: Veiculo[] = [];
+  if (createLaudoDto.veiculoIds?.length > 0) {
+    veiculos = await this.veiculoRepository.findByIds(createLaudoDto.veiculoIds);
+  }
+
   const laudo = this.laudoRepository.create({
     numero_inquerito: createLaudoDto.numero_inquerito,
     objetivo_pericia: createLaudoDto.objetivo_pericia,
     preambulo: createLaudoDto.preambulo,
     historico: createLaudoDto.historico,
-    nome_responsavel: processo.agente?.nome_agente ?? 'Responsável não definido',  // Proteção caso agente seja null
+    nome_responsavel: processo.agente?.nome_agente ?? 'Responsável não definido',
     autoridade_requisitante: createLaudoDto.autoridade_requisitante,
     orgao_requisitante: createLaudoDto.orgao_requisitante,
     guia_oficio: createLaudoDto.guia_oficio,
     ocorrencia_policial: createLaudoDto.ocorrencia_policial,
-    processo: processo,
+    processo,
+    veiculos,
   });
 
-  return this.laudoRepository.save(laudo);
+  const laudoSalvo = await this.laudoRepository.save(laudo);
+
+  // Retorne o laudo completo com as relações necessárias
+  return await this.findOne(laudoSalvo.id_laudo);
 }
+
+
 
   async update(id: number, data: Partial<CreateLaudoDto>): Promise<Laudo> {
   const laudo = await this.laudoRepository.findOne({

@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { Laudo } from '../laudo/laudo.entity';
+import { FotoVeiculo } from '../foto-veiculo/foto_veiculo.entity';
 
 @Entity('veiculo_carro')
 export class Veiculo {
@@ -57,17 +58,9 @@ export class Veiculo {
   @Column({ type: 'text', nullable: true })
   conclusao?: string;
 
-  @ManyToMany(() => Laudo, (laudo) => laudo.veiculos, { cascade: true })
-  @JoinTable({
-    name: 'veiculo_carro_has_laudo',
-    joinColumn: {
-      name: 'fk_veiculo_id',
-      referencedColumnName: 'veiculo_id',
-    },
-    inverseJoinColumn: {
-      name: 'fk_laudo_id',
-      referencedColumnName: 'id_laudo',
-    },
-  })
+  @ManyToMany(() => Laudo, laudo => laudo.veiculos, { cascade: true })
   laudos: Laudo[];
+  
+  @OneToMany(() => FotoVeiculo, (foto) => foto.veiculo, { cascade: true })
+  fotos: FotoVeiculo[];
 }

@@ -37,8 +37,19 @@ export class Laudo {
   @OneToOne(() => Processo, { eager: true })
   @JoinColumn({ name: 'processo_id_processo' }) 
   processo: Processo;
-  @ManyToMany(() => Veiculo, (veiculo) => veiculo.laudos)
-  veiculos: Veiculo[];
-}
 
-  
+  @ManyToMany(() => Veiculo, (veiculo) => veiculo.laudos)
+  @JoinTable({
+    name: 'veiculo_carro_has_laudo',
+    joinColumn: {
+      name: 'fk_laudo_id',
+      referencedColumnName: 'id_laudo',
+    },
+    inverseJoinColumn: {
+      name: 'fk_veiculo_id',
+      referencedColumnName: 'veiculo_id',
+    },
+  })
+@ManyToMany(() => Veiculo, veiculo => veiculo.laudos)
+veiculos: Veiculo[];
+}
