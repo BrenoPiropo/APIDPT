@@ -4,10 +4,12 @@ import { Veiculo } from './veiculo_carro.entity';
 import { VeiculoService } from './veiculo_carro.service';
 import { VeiculoController } from './veiculo_carro.controller';
 import { Laudo } from '../laudo/laudo.entity';
-import { FotoVeiculo } from '../foto-veiculo/foto_veiculo.entity';
-
+import { FotoVeiculoModule } from '../foto-veiculo/foto_veiculo.module'; 
 @Module({
-  imports: [TypeOrmModule.forFeature([Veiculo, Laudo, FotoVeiculo])],
+  imports: [
+    TypeOrmModule.forFeature([Veiculo, Laudo]),
+    FotoVeiculoModule, 
+  ],
   providers: [VeiculoService],
   controllers: [VeiculoController],
   exports: [VeiculoService],

@@ -17,6 +17,9 @@ export class CreateVeiculoDto {
   @IsOptional() @IsString() dados_central_eletronica?: string;
   @IsOptional() @IsString() etiquetas?: string;
   @IsOptional() @IsString() plaquetas_ano_fabricacao?: string;
+  @IsOptional() @IsString() licenciado_em_nome?: string;
+  @IsOptional() @IsString() categoria?: string;
+  @IsOptional() @IsString() observacoes_placa?: string;
 
   @IsOptional() @IsString() condicoes_tecnicas?: string;
   @IsOptional() @IsString() conclusao?: string;

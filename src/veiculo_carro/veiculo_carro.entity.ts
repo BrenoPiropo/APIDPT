@@ -58,6 +58,14 @@ export class Veiculo {
   @Column({ type: 'text', nullable: true })
   conclusao?: string;
 
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  licenciado_em_nome?: string;
+
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  categoria?: string;
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  observacoes_placa?: string;
+
   @ManyToMany(() => Laudo, laudo => laudo.veiculos, { cascade: true })
   laudos: Laudo[];
   
