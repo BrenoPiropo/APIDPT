@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Put, Param, Get, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UploadedFiles,
+  UseInterceptors,
+  NotFoundException,
+} from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { VeiculoService } from './veiculo_carro.service';
 import { CreateVeiculoDto } from './dto/create-veiculo.dto';
 
@@ -6,47 +18,84 @@ import { CreateVeiculoDto } from './dto/create-veiculo.dto';
 export class VeiculoController {
   constructor(private readonly veiculoService: VeiculoService) {}
 
-  @Post()
-  async create(
-    @Body() createVeiculoDto: CreateVeiculoDto,
-    @Body('fotos') fotosData?: {
-      foto_veiculo?: string[];
-      foto_vidros?: string[];
-      foto_placa?: string[];
-      foto_chassi?: string[];
-      foto_motor?: string[];
-    },
-  ) {
-    return this.veiculoService.create(createVeiculoDto, fotosData);
-  }
-
-  @Put(':id')
-  async update(
-    @Param('id') id: number,
-    @Body() updateVeiculoDto: Partial<CreateVeiculoDto>,
-    @Body('fotos') fotosData?: {
-      foto_veiculo?: string[];
-      foto_vidros?: string[];
-      foto_placa?: string[];
-      foto_chassi?: string[];
-      foto_motor?: string[];
-    },
-  ) {
-    return this.veiculoService.update(id, updateVeiculoDto, fotosData);
-  }
-
   @Get()
-  async findAll() {
+  findAll() {
     return this.veiculoService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
+  findOne(@Param('id') id: number) {
     return this.veiculoService.findOne(id);
   }
 
+  @Post()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'foto_veiculo', maxCount: 10 },
+      { name: 'foto_vidros', maxCount: 10 },
+      { name: 'foto_placa', maxCount: 10 },
+      { name: 'foto_chassi', maxCount: 10 },
+      { name: 'foto_motor', maxCount: 10 },
+    ]),
+  )
+  async create(
+    @Body() createVeiculoDto: CreateVeiculoDto,
+    @UploadedFiles()
+    files: {
+      foto_veiculo?: Express.Multer.File[];
+      foto_vidros?: Express.Multer.File[];
+      foto_placa?: Express.Multer.File[];
+      foto_chassi?: Express.Multer.File[];
+      foto_motor?: Express.Multer.File[];
+    },
+  ) {
+    // Converte arquivos para arrays de caminhos
+    const fotosData = {
+      foto_veiculo: files?.foto_veiculo?.map(f => f.path),
+      foto_vidros: files?.foto_vidros?.map(f => f.path),
+      foto_placa: files?.foto_placa?.map(f => f.path),
+      foto_chassi: files?.foto_chassi?.map(f => f.path),
+      foto_motor: files?.foto_motor?.map(f => f.path),
+    };
+
+    return this.veiculoService.create(createVeiculoDto, fotosData);
+  }
+
+  @Put(':id')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'foto_veiculo', maxCount: 10 },
+      { name: 'foto_vidros', maxCount: 10 },
+      { name: 'foto_placa', maxCount: 10 },
+      { name: 'foto_chassi', maxCount: 10 },
+      { name: 'foto_motor', maxCount: 10 },
+    ]),
+  )
+  async update(
+    @Param('id') id: number,
+    @Body() updateVeiculoDto: Partial<CreateVeiculoDto>,
+    @UploadedFiles()
+    files: {
+      foto_veiculo?: Express.Multer.File[];
+      foto_vidros?: Express.Multer.File[];
+      foto_placa?: Express.Multer.File[];
+      foto_chassi?: Express.Multer.File[];
+      foto_motor?: Express.Multer.File[];
+    },
+  ) {
+    const fotosData = {
+      foto_veiculo: files?.foto_veiculo?.map(f => f.path),
+      foto_vidros: files?.foto_vidros?.map(f => f.path),
+      foto_placa: files?.foto_placa?.map(f => f.path),
+      foto_chassi: files?.foto_chassi?.map(f => f.path),
+      foto_motor: files?.foto_motor?.map(f => f.path),
+    };
+
+    return this.veiculoService.update(id, updateVeiculoDto, fotosData);
+  }
+
   @Delete(':id')
-  async remove(@Param('id') id: number) {
+  remove(@Param('id') id: number) {
     return this.veiculoService.remove(id);
   }
 }

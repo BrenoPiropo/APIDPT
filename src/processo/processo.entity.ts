@@ -1,13 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+// src/processo/processo.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Agente } from '../agente/agente.entity';
 import { Gerente } from '../gerente/gerente.entity';
-import { Laudo } from '../laudo/laudo.entity';
 
 @Entity()
 export class Processo {
   @PrimaryGeneratedColumn()
   id_processo: number;
-
 
   @Column({ 
     type: 'varchar',
@@ -33,6 +32,4 @@ export class Processo {
   @JoinColumn({ name: 'agenteIdAgente' }) // FK para agente
   agente: Agente;
 
-  @OneToOne(() => Laudo, (laudo) => laudo.processo)
-  laudo: Laudo;
 }

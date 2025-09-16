@@ -1,3 +1,4 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GerenteModule } from './gerente/gerente.module';
@@ -6,11 +7,11 @@ import { AppService } from './app.service';
 import { ProcessoModule } from './processo/processo.module';
 import { LaudoController } from './laudo/laudo.controller';
 import { LaudoModule } from './laudo/laudo.module';
-import { VeiculoService } from './veiculo_carro/veiculo_carro.service';
 import { VeiculoModule } from './veiculo_carro/veiculo_carro.module';
-import { VeiculoController } from './veiculo_carro/veiculo_carro.controller';
 import { AuthModule } from './auth/auth.module';
 import { FotoVeiculoModule } from './foto-veiculo/foto_veiculo.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -21,9 +22,8 @@ import { FotoVeiculoModule } from './foto-veiculo/foto_veiculo.module';
       username: 'root',
       password: '1234',
       database: 'sistema_laudos_test',
-      autoLoadEntities: true, 
-      synchronize: false, 
-
+      autoLoadEntities: true,
+      synchronize: false,
     }),
     AgenteModule,
     GerenteModule,
@@ -31,9 +31,15 @@ import { FotoVeiculoModule } from './foto-veiculo/foto_veiculo.module';
     LaudoModule,
     VeiculoModule,
     AuthModule,
-    FotoVeiculoModule, 
+    FotoVeiculoModule,
   ],
-  providers: [AppService], 
-  controllers: [LaudoController], 
+  controllers: [LaudoController],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard, 
+    },
+  ],
 })
 export class AppModule {}

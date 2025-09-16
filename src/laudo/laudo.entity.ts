@@ -1,3 +1,4 @@
+// src/laudo/laudo.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
 import { Processo } from '../processo/processo.entity';
 import { Veiculo } from '../veiculo_carro/veiculo_carro.entity';
@@ -38,7 +39,7 @@ export class Laudo {
   @JoinColumn({ name: 'processo_id_processo' }) 
   processo: Processo;
 
-  @ManyToMany(() => Veiculo, (veiculo) => veiculo.laudos)
+  @ManyToMany(() => Veiculo, veiculo => veiculo.laudos)
   @JoinTable({
     name: 'veiculo_carro_has_laudo',
     joinColumn: {
@@ -50,6 +51,5 @@ export class Laudo {
       referencedColumnName: 'veiculo_id',
     },
   })
-@ManyToMany(() => Veiculo, veiculo => veiculo.laudos)
-veiculos: Veiculo[];
+  veiculos: Veiculo[];
 }
