@@ -12,7 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { FotoVeiculoModule } from './foto-veiculo/foto_veiculo.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
-
+import { ConsultaExternaModule } from './consulta_externa/consulta-externa.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -32,6 +32,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     VeiculoModule,
     AuthModule,
     FotoVeiculoModule,
+    ConsultaExternaModule,
   ],
   controllers: [LaudoController],
   providers: [

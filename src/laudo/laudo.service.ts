@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+// src/laudo/laudo.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Laudo } from './laudo.entity';
 import { Veiculo } from '../veiculo_carro/veiculo_carro.entity';
 import { Processo } from '../processo/processo.entity';
+import { ConsultaExterna } from '../consulta_externa/consulta_externa.entity';
 import { CreateLaudoDto } from './dto/create-laudo.dto';
 
 @Injectable()
@@ -17,12 +19,22 @@ export class LaudoService {
 
     @InjectRepository(Processo)
     private readonly processoRepository: Repository<Processo>,
+
+    @InjectRepository(ConsultaExterna)
+    private readonly consultaExternaRepository: Repository<ConsultaExterna>,
   ) {}
 
   // Buscar todos os laudos com relações
   findAll() {
     return this.laudoRepository.find({
-      relations: ['processo', 'processo.agente', 'processo.gerente', 'veiculos', 'veiculos.fotos'],
+      relations: [
+        'processo',
+        'processo.agente',
+        'processo.gerente',
+        'veiculos',
+        'veiculos.fotos',
+        'consultaExterna',
+      ],
     });
   }
 
@@ -30,7 +42,14 @@ export class LaudoService {
   async findOne(id: number): Promise<any> {
     const laudo = await this.laudoRepository.findOne({
       where: { id_laudo: id },
-      relations: ['processo', 'processo.agente', 'processo.gerente', 'veiculos', 'veiculos.fotos'],
+      relations: [
+        'processo',
+        'processo.agente',
+        'processo.gerente',
+        'veiculos',
+        'veiculos.fotos',
+        'consultaExterna',
+      ],
     });
 
     if (!laudo) throw new NotFoundException(`Laudo com id ${id} não encontrado`);
@@ -70,6 +89,7 @@ export class LaudoService {
           }
         : null,
       veiculos: laudo.veiculos || [],
+      consultaExterna: laudo.consultaExterna || [],
     };
   }
 
@@ -102,17 +122,18 @@ export class LaudoService {
       ocorrencia_policial: createLaudoDto.ocorrencia_policial,
       processo,
       veiculos,
+      consultaExterna: [], // vazio inicialmente, pode ser preenchido depois
     });
 
     const laudoSalvo = await this.laudoRepository.save(laudo);
     return this.findOne(laudoSalvo.id_laudo);
   }
 
-  // Atualizar laudo com veículos
+  // Atualizar laudo com veículos e consultas externas
   async update(id: number, data: Partial<CreateLaudoDto>): Promise<Laudo> {
     const laudo = await this.laudoRepository.findOne({
       where: { id_laudo: id },
-      relations: ['veiculos', 'processo', 'processo.agente', 'processo.gerente'],
+      relations: ['veiculos', 'processo', 'processo.agente', 'processo.gerente', 'consultaExterna'],
     });
 
     if (!laudo) throw new NotFoundException(`Laudo com id ${id} não encontrado`);
@@ -139,6 +160,13 @@ export class LaudoService {
 
     return this.findOne(id);
   }
+  async findByProcesso(id_processo: number) {
+  return this.laudoRepository.findOne({
+    where: { processo: { id_processo } },
+    relations: ['processo', 'processo.agente', 'processo.gerente', 'veiculos'],
+  });
+}
+
 
   async remove(id: number): Promise<Laudo> {
     const laudo = await this.laudoRepository.findOne({ where: { id_laudo: id } });
