@@ -84,7 +84,10 @@ async findAll(): Promise<ProcessoResponseDto[]> {
 }
 
   async update(id: number, updateDto: UpdateProcessoDto): Promise<Processo> {
-    const processo = await this.findOne(id);
+    const processo = await this.processoRepository.findOne({ where: { id_processo: id }, relations: ['agente', 'gerente'] });
+    if (!processo) {
+      throw new NotFoundException('Processo não encontrado');
+    }
 
     if (updateDto.gerenteId) {
       processo.gerente = await this.gerenteService.findOne(updateDto.gerenteId);
@@ -94,11 +97,12 @@ async findAll(): Promise<ProcessoResponseDto[]> {
       processo.agente = await this.agenteService.findOne(updateDto.agenteId);
     }
 
-    if (updateDto.status) processo.status = updateDto.status;
-    if (updateDto.prazo) processo.prazo = updateDto.prazo;
+    if (updateDto.status !== undefined) processo.status = updateDto.status;
+    if (updateDto.prazo !== undefined) processo.prazo = updateDto.prazo;
 
     return this.processoRepository.save(processo);
   }
+
 
   async remove(id: number): Promise<void> {
     const result = await this.processoRepository.delete(id);

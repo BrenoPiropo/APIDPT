@@ -9,10 +9,12 @@ import {
   Res,
   NotFoundException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
+import * as path from 'path';
 import { LaudoService } from './laudo.service';
 import { CreateLaudoDto } from './dto/create-laudo.dto';
 import { gerarHtmlLaudo } from './templates/laudo.template';
@@ -23,87 +25,94 @@ export class LaudoController {
 
   constructor(private readonly laudoService: LaudoService) {}
 
+  // 🔹 Retorna todos os laudos
   @Get()
-  findAll() {
+  async findAll() {
     return this.laudoService.findAll();
   }
-  @Get('processo/:id_processo')
-  async findByProcesso(@Param('id_processo') id_processo: number) {
-    const laudo = await this.laudoService.findByProcesso(id_processo);
-    if (!laudo) {
-      throw new NotFoundException('Nenhum laudo encontrado para este processo');
-    }
+
+  // 🔹 Retorna um laudo específico
+  @Get(':id')
+  async findOne(@Param('id') id: number) {
+    const laudo = await this.laudoService.findOne(id);
+    if (!laudo) throw new NotFoundException(`Laudo com ID ${id} não encontrado`);
     return laudo;
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.laudoService.findOne(id);
-  }
-
+  // 🔹 Cria um novo laudo
   @Post()
-  create(@Body() createLaudoDto: CreateLaudoDto) {
+  async create(@Body() createLaudoDto: CreateLaudoDto) {
     return this.laudoService.create(createLaudoDto);
   }
 
+  // 🔹 Atualiza um laudo
   @Put(':id')
-  update(@Param('id') id: number, @Body() data: CreateLaudoDto) {
-    return this.laudoService.update(id, data);
+  async update(@Param('id') id: number, @Body() updateLaudoDto: any) {
+    const laudo = await this.laudoService.update(id, updateLaudoDto);
+    if (!laudo) throw new NotFoundException(`Laudo com ID ${id} não encontrado`);
+    return laudo;
   }
 
+  // 🔹 Remove um laudo
   @Delete(':id')
-  remove(@Param('id') id: number) {
+  async remove(@Param('id') id: number) {
     return this.laudoService.remove(id);
   }
 
-  // ---------------------------
-  // Rota para gerar PDF e salvar no disco
-  // GET /laudo/:id/pdf
-  // ---------------------------
-  
-  @Get(':id/pdf')
+  // 🔹 Gera o PDF do laudo e salva localmente
+  @Get('pdf/:id')
   async gerarPdf(@Param('id') id: number, @Res() res: Response) {
-    const laudo = await this.laudoService.findOne(id);
+    this.logger.log(`Gerando PDF do laudo ${id}...`);
 
-    if (!laudo) {
-      throw new NotFoundException('Laudo não encontrado');
-    }
-    console.log('Laudo recebido para PDF:', laudo);
-
-    const html = gerarHtmlLaudo(laudo);
-
-    let browser: puppeteer.Browser | null = null;
     try {
-      browser = await puppeteer.launch({
+      const laudo = await this.laudoService.findOne(id);
+      if (!laudo) throw new NotFoundException(`Laudo ${id} não encontrado`);
+
+      // 🟢 Caminho relativo da pasta uploads
+      const uploadsDir = path.resolve('./uploads');
+      const laudoDir = path.join(uploadsDir, `laudo_${id}`);
+
+      // Cria diretórios se não existirem
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+      if (!fs.existsSync(laudoDir)) fs.mkdirSync(laudoDir, { recursive: true });
+
+      // 🧩 Gera o HTML do laudo
+      const htmlContent = gerarHtmlLaudo(laudo);
+
+      // Caminho completo do PDF
+      const pdfPath = path.join(laudoDir, `laudo_${id}.pdf`);
+
+      // 🦊 Inicializa o Puppeteer
+      const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-      const pdfBuffer = await page.pdf({
+      await page.pdf({
+        path: pdfPath,
         format: 'A4',
         printBackground: true,
-        margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+        margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
       });
 
-      // ---------------------------
-      // Salva o PDF no disco
-      // ---------------------------
-      const filePath = `C:/Users/Breno Piropo/Desktop/laudo_${id}.pdf`;
-      fs.writeFileSync(filePath, pdfBuffer);
-      this.logger.log(`PDF do Laudo ${id} salvo em: ${filePath}`);
+      await browser.close();
 
-      // Envia o PDF para o navegador também
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=laudo_${id}.pdf`);
-      res.send(pdfBuffer);
-    } catch (err) {
-      this.logger.error('Erro ao gerar PDF', (err as Error).stack);
-      res.status(500).send('Erro ao gerar PDF');
-    } finally {
-      if (browser) await browser.close();
+      this.logger.log(`PDF do Laudo ${id} salvo em: ${pdfPath}`);
+
+      // 📤 Envia o arquivo PDF como resposta
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename=laudo_${id}.pdf`,
+      });
+
+      const fileStream = fs.createReadStream(pdfPath);
+      fileStream.pipe(res);
+    } catch (error) {
+      this.logger.error('Erro ao gerar PDF do laudo:', error);
+      throw new InternalServerErrorException('Erro ao gerar PDF');
     }
   }
 }

@@ -2,7 +2,8 @@ import { Laudo } from '../laudo.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const UPLOADS_DIR = 'C:/Users/Breno Piropo/api-gerenciamento/uploads';
+// Usa uploads relativo ao diretório atual da aplicação (funciona local e em servidor)
+const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
 
 export function gerarHtmlLaudo(laudo: Laudo): string {
   // Variável global para contar todas as fotos sequencialmente
@@ -11,8 +12,8 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
   // Função para carregar a logo em base64 - com fallback seguro
   const carregarLogo = () => {
     try {
-      const logoPath = 'C:/Users/Breno Piropo/api-gerenciamento/uploads/DPT.jpg';
-      
+      const logoPath = path.join(UPLOADS_DIR, 'DPT.jpg');
+
       // Verificação simples de existência - sem operações que podem causar 401
       if (fs.existsSync(logoPath)) {
         try {
@@ -34,27 +35,31 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
 
   const gerarFotosHtml = (idLaudo: number, tipoFotos: string, descricao: string) => {
     try {
-      const fotosPath = path.join(UPLOADS_DIR, `Fotos do laudo ${idLaudo}`);
-      
+      const fotosPath = path.join(UPLOADS_DIR, `laudo_${idLaudo}`);
       if (!fs.existsSync(fotosPath)) {
         return '';
       }
 
-      const fotos = fs.readdirSync(fotosPath)
-        .filter(f => f.toLowerCase().includes(tipoFotos.toLowerCase()) && 
-                (f.endsWith('.jpeg') || f.endsWith('.jpg') || f.endsWith('.png')));
-      
+      const fotos = fs
+        .readdirSync(fotosPath)
+        .filter(
+          (f) =>
+            f.toLowerCase().includes(tipoFotos.toLowerCase()) &&
+            (f.endsWith('.jpeg') || f.endsWith('.jpg') || f.endsWith('.png')),
+        );
+
       if (fotos.length === 0) {
         return '';
       }
 
-      return fotos.map((foto, index) => {
-        try {
-          const fotoPath = path.join(fotosPath, foto);
-          const ext = path.extname(fotoPath).slice(1);
-          const base64 = fs.readFileSync(fotoPath, { encoding: 'base64' });
-          contadorFotos++;
-          return `
+      return fotos
+        .map((foto, index) => {
+          try {
+            const fotoPath = path.join(fotosPath, foto);
+            const ext = path.extname(fotoPath).slice(1);
+            const base64 = fs.readFileSync(fotoPath, { encoding: 'base64' });
+            contadorFotos++;
+            return `
             <div class="image-container">
               <div class="quadro-imagem">
                 <img src="data:image/${ext};base64,${base64}" alt="Foto ${contadorFotos}" />
@@ -62,9 +67,9 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
               <div class="image-caption">Foto ${contadorFotos} - ${descricao}</div>
             </div>
           `;
-        } catch (error) {
-          contadorFotos++;
-          return `
+          } catch (error) {
+            contadorFotos++;
+            return `
             <div class="image-container">
               <div class="quadro-imagem" style="display: flex; align-items: center; justify-content: center; color: #666;">
                 Imagem não disponível
@@ -72,8 +77,9 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
               <div class="image-caption">Foto ${contadorFotos} - ${descricao}</div>
             </div>
           `;
-        }
-      }).join('');
+          }
+        })
+        .join('');
     } catch (error) {
       return '';
     }
@@ -91,18 +97,52 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
   // Pega o primeiro veículo (único no array)
   const veiculo = laudo.veiculos?.[0];
 
+  // Pega a primeira consulta externa se existir
+  const consultaExterna = laudo.consultaExterna?.[0];
+
   // Template seguro da logo
-  const logoHtml = logoBase64 ? `
+  const logoHtml = logoBase64
+    ? `
     <div class="logo-container">
       <img src="${logoBase64}" alt="Logo DPT" class="logo" />
     </div>
-  ` : '';
+  `
+    : '';
 
-  const logoNormalHtml = logoBase64 ? `
+  const logoNormalHtml = logoBase64
+    ? `
     <div class="logo-container-normal">
       <img src="${logoBase64}" alt="Logo DPT" class="logo-normal" />
     </div>
-  ` : '';
+  `
+    : '';
+
+  // Função para gerar a seção de consulta externa
+  const gerarSecaoConsultaExterna = () => {
+    if (!consultaExterna) return '';
+
+    return `
+    <!-- Página de Consulta Externa -->
+    <div class="page">
+      <div class="pagina-conteudo">
+        <div class="conteudo-completo">
+          <div class="secao">
+            <div class="secao-titulo">CONSULTA EXTERNA</div>
+            <div class="dados-veiculo">
+              <div><span class="campo-destaque">DESCRIÇÃO DA PLACA:</span><span class="campo-valor">${consultaExterna.descricao_placa || '-'}</span></div>
+              <div><span class="campo-destaque">VIN:</span><span class="campo-valor">${consultaExterna.vin || '-'}</span></div>
+              <div><span class="campo-destaque">MARCA/MODELO:</span><span class="campo-valor">${consultaExterna.marca_modelo || '-'}</span></div>
+              <div><span class="campo-destaque">CATEGORIA:</span><span class="campo-valor">${consultaExterna.categoria_consulta || '-'}</span></div>
+              <div><span class="campo-destaque">COR:</span><span class="campo-valor">${consultaExterna.cor_consulta || '-'}</span></div>
+              <div><span class="campo-destaque">SÉRIE DO MOTOR:</span><span class="campo-valor">${consultaExterna.serie_motor_consulta || '-'}</span></div>
+              <div><span class="campo-destaque">LICENCIADO EM NOME DE:</span><span class="campo-valor">${consultaExterna.licenciado_em_nome_de || '-'}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
+  };
 
   return `
 <!DOCTYPE html>
@@ -572,6 +612,8 @@ export function gerarHtmlLaudo(laudo: Laudo): string {
             </div>
         </div>
     </div>
+    
+    ${gerarSecaoConsultaExterna()}
     
     <!-- Página 4 - Conclusão e Assinatura COM HEADER -->
     <div class="page">

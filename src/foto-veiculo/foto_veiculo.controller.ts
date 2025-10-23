@@ -1,10 +1,10 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  UploadedFiles, 
-  UseInterceptors, 
-  BadRequestException 
+import {
+  Controller,
+  Post,
+  Body,
+  UploadedFiles,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -33,8 +33,11 @@ export class FotoVeiculoController {
             if (!id_laudo) {
               return cb(new BadRequestException('id_laudo é obrigatório'), '');
             }
-            const folder = `./uploads/Fotos do laudo ${id_laudo}`;
+
+            // ✅ Usa a mesma pasta do laudo
+            const folder = `./uploads/laudo_${id_laudo}`;
             if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
+
             cb(null, folder);
           },
           filename: (req, file, cb) => {
@@ -47,9 +50,10 @@ export class FotoVeiculoController {
     ),
   )
   async uploadComplete(
-    @UploadedFiles() files: { 
-      foto_veiculo?: Express.Multer.File[]; 
-      foto_vidros?: Express.Multer.File[]; 
+    @UploadedFiles()
+    files: {
+      foto_veiculo?: Express.Multer.File[];
+      foto_vidros?: Express.Multer.File[];
       foto_placa?: Express.Multer.File[];
       foto_chassi?: Express.Multer.File[];
       foto_motor?: Express.Multer.File[];
@@ -64,7 +68,6 @@ export class FotoVeiculoController {
       throw new BadRequestException('Nenhum arquivo enviado');
     }
 
-    // Converte os arquivos para apenas os nomes das imagens
     const fotosData = {
       foto_veiculo: files.foto_veiculo?.map(f => f.filename) || [],
       foto_vidros: files.foto_vidros?.map(f => f.filename) || [],
@@ -73,7 +76,6 @@ export class FotoVeiculoController {
       foto_motor: files.foto_motor?.map(f => f.filename) || [],
     };
 
-    // Salva todas as fotos em um único registro
     const fotos = await this.fotoService.saveFotos(veiculo_id, fotosData);
 
     return {
@@ -82,4 +84,4 @@ export class FotoVeiculoController {
       fotos,
     };
   }
-} 
+}
